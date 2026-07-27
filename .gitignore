@@ -1,0 +1,20 @@
+.env
+.env.*
+!.env.example
+
+node_modules/
+dist/
+coverage/
+
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Exportaciones locales de datos
+database/exports/*
+!database/exports/.gitkeep
+
+# Archivos temporales
+*.log
+*.tmp
