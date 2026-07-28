@@ -1,5 +1,5 @@
 \set projects_count 10
-\set days_history 30
+\set days_history 90
 \set logs_per_project_day 1000
 \set monitor_checks_per_project_day 288
 
