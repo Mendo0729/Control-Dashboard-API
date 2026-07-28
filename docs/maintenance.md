@@ -33,6 +33,45 @@
 - eliminación por lotes;
 - `VACUUM (ANALYZE)` al finalizar.
 
+## Restauración
+
+La restauración acepta el identificador registrado en `log_archives` o el nombre del archivo.
+
+Primero ejecuta una vista previa:
+
+```powershell
+.\scripts\restore-archive.ps1 `
+  -ArchiveId 18c7a6c9-8baa-49b6-8ec1-49a94d2ce063
+```
+
+También puede seleccionarse por nombre:
+
+```powershell
+.\scripts\restore-archive.ps1 `
+  -FileName monitor_results_20260728_135442.jsonl.gz
+```
+
+Para aplicar la restauración:
+
+```powershell
+.\scripts\restore-archive.ps1 `
+  -ArchiveId 18c7a6c9-8baa-49b6-8ec1-49a94d2ce063 `
+  -Apply
+```
+
+Antes de insertar, el script:
+
+1. consulta los metadatos en `log_archives`;
+2. confirma que el archivo exista en `database/exports`;
+3. verifica el checksum SHA-256;
+4. valida la cantidad de líneas JSONL;
+5. identifica registros existentes y restaurables;
+6. inserta dentro de una transacción;
+7. omite identificadores duplicados;
+8. actualiza la secuencia de identidad de la tabla.
+
+La restauración soporta archivos `LOG_RETENTION` y `MONITOR_RETENTION`.
+
 ## Programación sugerida
 
 Ejecutar una vez al día durante una ventana de baja actividad. En Windows puede configurarse mediante Task Scheduler y en Linux mediante cron o systemd timer.
