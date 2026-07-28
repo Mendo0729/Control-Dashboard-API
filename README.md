@@ -2,17 +2,20 @@
 
 Backend y entorno de datos para **Mendo Control Center**.
 
-## Fase actual: base de datos local
+## Estado actual
 
-La primera implementación valida el modelo PostgreSQL antes de iniciar NestJS y Prisma.
+La fase de datos PostgreSQL ya incluye:
 
-Objetivos:
+- modelo relacional e índices;
+- datos base y simulación de crecimiento;
+- medición de almacenamiento;
+- políticas de retención;
+- archivo JSON Lines comprimido con GZIP;
+- checksum SHA-256 y trazabilidad en base de datos;
+- eliminación segura por lotes;
+- mantenimiento unificado de logs y monitoreo.
 
-- medir crecimiento de tablas e índices;
-- simular logs y verificaciones de monitoreo;
-- definir políticas de retención;
-- exportar información antes de eliminarla;
-- mantener el consumo dentro del límite del plan gratuito.
+La siguiente fase incorporará restauración de archivos, pruebas automáticas, CI y la aplicación NestJS/Prisma.
 
 ## Requisitos
 
@@ -28,8 +31,6 @@ Copy-Item .env.example .env
 docker compose up -d
 ```
 
-Servicios locales:
-
 | Servicio | Dirección |
 |---|---|
 | PostgreSQL | `localhost:5432` |
@@ -37,9 +38,7 @@ Servicios locales:
 
 Los scripts de `database/init` se ejecutan solamente cuando se crea el volumen de PostgreSQL por primera vez.
 
-## Ejecutar una simulación
-
-El generador utiliza valores predeterminados de 10 proyectos, 30 días, 1,000 logs diarios por proyecto y 288 verificaciones diarias por monitor.
+## Simulación
 
 ```powershell
 Get-Content database/simulation/generate_data.sql |
@@ -48,9 +47,9 @@ Get-Content database/simulation/generate_data.sql |
     -d control_dashboard
 ```
 
-Para modificar un escenario, edita las variables ubicadas al principio de `database/simulation/generate_data.sql`.
+Las variables del escenario están al comienzo de `database/simulation/generate_data.sql`.
 
-## Medir almacenamiento
+## Medición de almacenamiento
 
 ```powershell
 Get-Content database/simulation/measure_storage.sql |
@@ -59,15 +58,16 @@ Get-Content database/simulation/measure_storage.sql |
     -d control_dashboard
 ```
 
-El reporte muestra:
+Panel consolidado:
 
-- tamaño total de la base;
-- tamaño de tablas e índices;
-- promedio aproximado por registro;
-- distribución de logs;
-- proyección a 30, 90 y 365 días.
+```powershell
+Get-Content database/simulation/storage_dashboard.sql |
+  docker compose exec -T postgres psql `
+    -U control_admin `
+    -d control_dashboard
+```
 
-## Política inicial de retención
+## Política de retención
 
 | Información | Retención local |
 |---|---:|
@@ -77,41 +77,23 @@ El reporte muestra:
 | Logs `CRITICAL` | 180 días |
 | Resultados detallados de monitoreo | 90 días |
 
-### Vista previa
-
-La vista previa no exporta ni elimina información.
+### Vista previa completa
 
 ```powershell
-Get-Content database/simulation/retention_preview.sql |
-  docker compose exec -T postgres psql `
-    -U control_admin `
-    -d control_dashboard
-
-.\scripts\archive-and-cleanup.ps1
+.\scripts\run-retention-maintenance.ps1
 ```
 
-### Aplicar archivo y limpieza
+### Aplicar mantenimiento
 
 ```powershell
-.\scripts\archive-and-cleanup.ps1 -Apply -BatchSize 10000
+.\scripts\run-retention-maintenance.ps1 -Apply -BatchSize 10000
 ```
 
-El proceso:
+El proceso fija una fecha de corte, exporta, comprime, verifica, registra el archivo, elimina por lotes y ejecuta `VACUUM (ANALYZE)`.
 
-1. fija una fecha de corte;
-2. exporta los logs vencidos en formato JSON Lines;
-3. comprime el archivo con `gzip`;
-4. verifica la cantidad exportada;
-5. calcula un checksum SHA-256;
-6. registra el archivo en `log_archives`;
-7. elimina los registros en lotes;
-8. ejecuta `VACUUM (ANALYZE)`.
+Los archivos se guardan en `database/exports/` y no se versionan en Git.
 
-Los archivos se guardan en `database/exports/`. Esta carpeta está montada dentro del contenedor como `/exports`.
-
-La limpieza normal no ejecuta `VACUUM FULL`. El espacio liberado queda disponible para reutilización interna de PostgreSQL sin bloquear completamente la tabla.
-
-### Medir el resultado
+## Validación posterior
 
 ```powershell
 Get-Content database/simulation/measure_cleanup.sql |
@@ -120,40 +102,46 @@ Get-Content database/simulation/measure_cleanup.sql |
     -d control_dashboard
 ```
 
-## Reiniciar completamente la base
-
-Este comando elimina los datos locales y vuelve a ejecutar los scripts de inicialización:
+## Reiniciar la base local
 
 ```powershell
 docker compose down -v
 docker compose up -d
 ```
 
-## Estructura actual
+## Estructura
 
 ```text
 database/
 ├── init/
-│   ├── 001_extensions.sql
-│   ├── 002_schema.sql
-│   ├── 003_indexes.sql
-│   └── 004_seed.sql
 ├── simulation/
 │   ├── generate_data.sql
 │   ├── measure_storage.sql
 │   ├── retention_preview.sql
-│   └── measure_cleanup.sql
+│   ├── measure_cleanup.sql
+│   └── storage_dashboard.sql
 └── exports/
 
+docs/
+├── architecture.md
+└── maintenance.md
+
 scripts/
-└── archive-and-cleanup.ps1
+├── archive-and-cleanup.ps1
+├── archive-monitor-results.ps1
+└── run-retention-maintenance.ps1
 ```
+
+## Documentación
+
+- [Arquitectura](docs/architecture.md)
+- [Mantenimiento y retención](docs/maintenance.md)
 
 ## Próximos pasos
 
-1. Ejecutar escenarios de 90, 180 y 365 días.
-2. Validar la política de retención mediante exportación y limpieza.
-3. Comparar el crecimiento antes y después del mantenimiento.
-4. Revisar el costo de los índices de `log_entries`.
+1. Implementar restauración verificada de archivos.
+2. Añadir pruebas automáticas del ciclo de retención.
+3. Configurar GitHub Actions.
+4. Registrar métricas históricas de mantenimiento.
 5. Traducir el modelo aprobado a Prisma.
 6. Inicializar la aplicación NestJS.
