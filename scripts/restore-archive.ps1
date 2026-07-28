@@ -170,6 +170,7 @@ WITH parsed AS (
     SELECT line::jsonb AS payload FROM restore_raw
 ), inserted AS (
     INSERT INTO $targetTable ($insertColumns)
+    OVERRIDING SYSTEM VALUE
     SELECT
 $jsonColumns
     FROM parsed
