@@ -10,7 +10,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
-    "start:prod": "node dist/main",
+    "start:prod": "node dist/main.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -30,7 +30,7 @@
     "ts-loader": "^9.5.2",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^6.0.0"
+    "typescript": "5.9.3"
   },
   "engines": {
     "node": ">=20"
