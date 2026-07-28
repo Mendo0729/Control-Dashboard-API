@@ -6,7 +6,7 @@ SELECT current_database() AS database_name,
        pg_size_pretty(pg_database_size(current_database())) AS total_size,
        pg_database_size(current_database()) AS total_bytes;
 
-\echo === Tamaño por tabla ===
+\echo === Tamano por tabla ===
 SELECT relname AS table_name,
        n_live_tup AS live_rows,
        n_dead_tup AS dead_rows,
@@ -21,7 +21,7 @@ SELECT relname AS table_name,
 FROM pg_stat_user_tables
 ORDER BY pg_total_relation_size(relid) DESC;
 
-\echo === Archivos históricos ===
+\echo === Archivos historicos ===
 SELECT archive_type,
        COUNT(*) AS archive_count,
        SUM(record_count) AS archived_records,
