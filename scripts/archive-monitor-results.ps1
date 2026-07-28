@@ -140,10 +140,10 @@ WITH batch AS (
 SELECT COUNT(*) FROM deleted;
 "@)
 
+    if ($deleted -eq 0) { break }
+
     $totalDeleted += $deleted
     Write-Host "Eliminados: $totalDeleted de $exportedCount"
-
-    if ($deleted -eq 0) { break }
 }
 
 if ($totalDeleted -ne $exportedCount) {
