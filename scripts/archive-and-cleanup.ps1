@@ -29,7 +29,12 @@ function Invoke-PsqlScalar {
         throw "psql finalizo con codigo $LASTEXITCODE."
     }
 
-    return ($result | Select-Object -Last 1).Trim()
+    $lines = @($result)
+    if ($lines.Count -eq 0 -or $null -eq $lines[-1]) {
+        return ''
+    }
+
+    return ([string]$lines[-1]).Trim()
 }
 
 Write-Host 'Revisando registros vencidos...'
@@ -82,6 +87,10 @@ COPY (
 "@
 
 Invoke-PsqlScalar $copySql | Out-Null
+
+if (-not (Test-Path (Join-Path 'database/exports' $fileBase))) {
+    throw "La exportacion no genero el archivo esperado: $containerJson"
+}
 
 docker compose exec -T postgres sh -c "gzip -f '$containerJson'"
 if ($LASTEXITCODE -ne 0) { throw 'No se pudo comprimir el archivo.' }
