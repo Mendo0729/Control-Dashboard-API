@@ -7,6 +7,8 @@ type EnvironmentVariables = Record<string, unknown> & {
   PORT: number;
   API_PREFIX: string;
   DATABASE_URL: string;
+  JWT_SECRET: string;
+  JWT_EXPIRES_IN_SECONDS: number;
 };
 
 function readRequiredString(
@@ -31,6 +33,19 @@ function readPort(config: Record<string, unknown>): number {
   }
 
   return port;
+}
+
+function readJwtExpiration(config: Record<string, unknown>): number {
+  const rawValue = config.JWT_EXPIRES_IN_SECONDS ?? 3600;
+  const seconds = Number(rawValue);
+
+  if (!Number.isInteger(seconds) || seconds < 60 || seconds > 604800) {
+    throw new Error(
+      'JWT_EXPIRES_IN_SECONDS debe ser un entero entre 60 y 604800.',
+    );
+  }
+
+  return seconds;
 }
 
 function readNodeEnvironment(config: Record<string, unknown>): NodeEnvironment {
@@ -63,10 +78,17 @@ function validateDatabaseUrl(databaseUrl: string): void {
   }
 }
 
+function validateJwtSecret(jwtSecret: string): void {
+  if (jwtSecret.length < 32) {
+    throw new Error('JWT_SECRET debe contener al menos 32 caracteres.');
+  }
+}
+
 export function validateEnvironment(
   config: Record<string, unknown>,
 ): EnvironmentVariables {
   const databaseUrl = readRequiredString(config, 'DATABASE_URL');
+  const jwtSecret = readRequiredString(config, 'JWT_SECRET');
   const apiPrefix = String(config.API_PREFIX ?? 'api').trim();
 
   if (apiPrefix === '') {
@@ -74,6 +96,7 @@ export function validateEnvironment(
   }
 
   validateDatabaseUrl(databaseUrl);
+  validateJwtSecret(jwtSecret);
 
   return {
     ...config,
@@ -81,5 +104,7 @@ export function validateEnvironment(
     PORT: readPort(config),
     API_PREFIX: apiPrefix,
     DATABASE_URL: databaseUrl,
+    JWT_SECRET: jwtSecret,
+    JWT_EXPIRES_IN_SECONDS: readJwtExpiration(config),
   };
 }
