@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 
+import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
@@ -12,6 +13,13 @@ async function bootstrap(): Promise<void> {
   const apiPrefix = configService.getOrThrow<string>('app.apiPrefix');
 
   app.setGlobalPrefix(apiPrefix);
+  app.useGlobalPipes(
+    new ValidationPipe({
+      transform: true,
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    }),
+  );
   app.enableShutdownHooks();
 
   await app.listen(port, '0.0.0.0');
