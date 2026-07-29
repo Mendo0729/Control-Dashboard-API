@@ -3,6 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { compare } from 'bcrypt';
 import { PrismaService } from '../database/prisma.service';
 import { LoginDto } from './dto/login.dto';
+import { JwtPayload } from './interfaces/jwt-payload.interface';
 
 @Injectable()
 export class AuthService {
@@ -12,8 +13,9 @@ export class AuthService {
   ) {}
 
   async login(dto: LoginDto) {
+    const email = dto.email.trim().toLowerCase();
     const user = await this.prisma.users.findUnique({
-      where: { email: dto.email.toLowerCase() },
+      where: { email },
     });
 
     if (!user || !user.is_active) {
@@ -26,20 +28,22 @@ export class AuthService {
       throw new UnauthorizedException('Credenciales inválidas.');
     }
 
-    const accessToken = await this.jwtService.signAsync({
-      sub: user.id,
+    const payload: JwtPayload = {
+      sub: String(user.id),
       email: user.email,
-      role: user.role,
-    });
+      role: String(user.role),
+    };
+
+    const accessToken = await this.jwtService.signAsync(payload);
 
     return {
       accessToken,
       tokenType: 'Bearer',
       user: {
-        id: user.id,
+        id: String(user.id),
         email: user.email,
         fullName: user.full_name,
-        role: user.role,
+        role: String(user.role),
       },
     };
   }
