@@ -1,0 +1,85 @@
+const ALLOWED_ENVIRONMENTS = ['development', 'test', 'production'] as const;
+
+type NodeEnvironment = (typeof ALLOWED_ENVIRONMENTS)[number];
+
+type EnvironmentVariables = Record<string, unknown> & {
+  NODE_ENV: NodeEnvironment;
+  PORT: number;
+  API_PREFIX: string;
+  DATABASE_URL: string;
+};
+
+function readRequiredString(
+  config: Record<string, unknown>,
+  key: string,
+): string {
+  const value = config[key];
+
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new Error(`La variable de entorno ${key} es obligatoria.`);
+  }
+
+  return value.trim();
+}
+
+function readPort(config: Record<string, unknown>): number {
+  const rawPort = config.PORT ?? 3000;
+  const port = Number(rawPort);
+
+  if (!Number.isInteger(port) || port < 1 || port > 65535) {
+    throw new Error('PORT debe ser un número entero entre 1 y 65535.');
+  }
+
+  return port;
+}
+
+function readNodeEnvironment(config: Record<string, unknown>): NodeEnvironment {
+  const value = String(config.NODE_ENV ?? 'development');
+
+  if (!ALLOWED_ENVIRONMENTS.includes(value as NodeEnvironment)) {
+    throw new Error(
+      `NODE_ENV debe ser uno de: ${ALLOWED_ENVIRONMENTS.join(', ')}.`,
+    );
+  }
+
+  return value as NodeEnvironment;
+}
+
+function validateDatabaseUrl(databaseUrl: string): void {
+  let parsedUrl: URL;
+
+  try {
+    parsedUrl = new URL(databaseUrl);
+  } catch {
+    throw new Error('DATABASE_URL debe ser una URL válida de PostgreSQL.');
+  }
+
+  if (!['postgresql:', 'postgres:'].includes(parsedUrl.protocol)) {
+    throw new Error('DATABASE_URL debe utilizar el protocolo postgresql://.');
+  }
+
+  if (!parsedUrl.hostname || !parsedUrl.pathname.slice(1)) {
+    throw new Error('DATABASE_URL debe incluir host y nombre de base de datos.');
+  }
+}
+
+export function validateEnvironment(
+  config: Record<string, unknown>,
+): EnvironmentVariables {
+  const databaseUrl = readRequiredString(config, 'DATABASE_URL');
+  const apiPrefix = String(config.API_PREFIX ?? 'api').trim();
+
+  if (apiPrefix === '') {
+    throw new Error('API_PREFIX no puede estar vacío.');
+  }
+
+  validateDatabaseUrl(databaseUrl);
+
+  return {
+    ...config,
+    NODE_ENV: readNodeEnvironment(config),
+    PORT: readPort(config),
+    API_PREFIX: apiPrefix,
+    DATABASE_URL: databaseUrl,
+  };
+}
