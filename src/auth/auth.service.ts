@@ -42,7 +42,7 @@ export class AuthService {
       user: {
         id: String(user.id),
         email: user.email,
-        fullName: user.full_name,
+        fullName: user.name,
         role: String(user.role),
       },
     };
